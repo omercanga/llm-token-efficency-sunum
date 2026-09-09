@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<title>LEGACY - Retro Space War</title>
+<style>
+  body {
+    background: #000;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    font-family: 'Courier New', monospace;
+    color: #0ff;
+    overflow: hidden;
+  }
+  #gameWrap {
+    position: relative;
+  }
+  #gameCanvas {
+    background: #000;
+    border: 4px solid #0ff;
+    box-shadow: 0 0 20px #0ff, 0 0 40px #f0f inset;
+  }
+  #hud {
+    display: flex;
+    justify-content: space-between;
+    width: 600px;
+    font-size: 20px;
+    text-shadow: 0 0 10px #0ff;
+    margin-bottom: 5px;
+  }
+  #levelBanner {
+    position: absolute;
+    top: 280px;
+    left: 0;
+    width: 100%;
+    text-align: center;
+    font-size: 42px;
+    color: #ff0;
+    text-shadow: 0 0 15px #f0f, 0 0 30px #f0f;
+    letter-spacing: 6px;
+    pointer-events: none;
+    opacity: 0;
+  }
+  #powerupIndicator {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    color: #0f0;
+    font-size: 14px;
+    text-shadow: 0 0 8px #0f0;
+    display: none;
+  }
+  #overlay {
+    position: absolute;
+    text-align: center;
+    color: #ff0;
+    text-shadow: 0 0 10px #f0f;
+    display: none;
+  }
+  #overlay h1 {
+    font-size: 48px;
+    letter-spacing: 4px;
+  }
+  #overlay input {
+    background: #000;
+    border: 2px solid #0ff;
+    color: #0ff;
+    font-family: 'Courier New', monospace;
+    font-size: 18px;
+    padding: 5px;
+    text-align: center;
+  }
+  #overlay button {
+    background: #000;
+    border: 2px solid #f0f;
+    color: #f0f;
+    font-family: 'Courier New', monospace;
+    font-size: 16px;
+    padding: 6px 12px;
+    margin-top: 10px;
+    cursor: pointer;
+  }
+  #highscores {
+    margin-top: 10px;
+    font-size: 14px;
+    color: #0f0;
+  }
+</style>
+</head>
+<body>
+
+<div id="hud">
+  <div>SCORE: <span id="score">0</span></div>
+  <div>LEVEL: <span id="level">1</span></div>
+  <div>LIVES: <span id="lives">3</span></div>
+  <div>HIGH: <span id="highscore">0</span></div>
+</div>
+
+<div id="gameWrap">
+  <canvas id="gameCanvas" width="600" height="700"></canvas>
+  <div id="levelBanner"></div>
+  <div id="powerupIndicator">RAPID FIRE!</div>
+</div>
+
+<div id="overlay">
+  <h1>GAME OVER</h1>
+  <p>Score: <span id="finalScore">0</span></p>
+  <input type="text" id="playerName" placeholder="İsminizi girin" maxlength="12">
+  <br>
+  <button onclick="saveScore()">KAYDET</button>
+  <button onclick="restartGame()">TEKRAR OYNA</button>
+  <div id="highscores"></div>
+</div>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const W = canvas.width;
+const H = canvas.height;
+
+// --- Ses efektleri (basit WebAudio bip sesleri) ---
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+function beep(freq, dur, type='square', vol=0.1) {
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = type;
+  osc.frequency.value = freq;
+  gain.gain.value = vol;
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  osc.start();
+  osc.stop(audioCtx.currentTime + dur);
+}
+function sfxShoot() { beep(880, 0.05, 'square', 0.05); }
+function sfxExplosion() { beep(120, 0.2, 'sawtooth', 0.08); }
+function sfxHit() { beep(200, 0.15, 'triangle', 0.08); }
+function sfxGameOver() { beep(100, 0.5, 'sawtooth', 0.1); }
+function sfxLevelUp() { beep(660, 0.12, 'square', 0.08); setTimeout(()=>beep(880,0.15,'square',0.08), 120); }
+function sfxPowerup() { beep(1200, 0.1, 'triangle', 0.08); }
+
+// --- Oyun durumu ---
+let score = 0;
+let lives = 3;
+let level = 1;
+let gameOver = false;
+let paused = false; // level-up banner sırasında true
+let keys = {};
+
+let player = {
+  x: W/2 - 20,
+  y: H - 60,
+  w: 40,
+  h: 30,
+  speed: 6
+};
+
+let bullets = [];
+let enemyBullets = [];
+let enemies = [];
+let particles = [];
+let powerups = [];
+let stars = [];
+
+let rapidFireUntil = 0;
+let fireCooldown = 0;
+
+let shakeTime = 0;
+let shakeMag = 0;
+
+// arkaplan yıldızları
+for (let i = 0; i < 100; i++) {
+  stars.push({x: Math.random()*W, y: Math.random()*H, speed: Math.random()*3+1});
+}
+
+function enemyTypesForLevel(lvl) {
+  // level ilerledikçe yeni düşman tipleri devreye girer -> daha fazla aksiyon
+  let types = ['normal'];
+  if (lvl >= 2) types.push('zigzag');
+  if (lvl >= 3) types.push('diver');
+  return types;
+}
+
+function spawnWave() {
+  enemies = [];
+  let rows = 3 + Math.min(level, 4);
+  let cols = 6;
+  let types = enemyTypesForLevel(level);
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      let type = types[Math.floor(Math.random()*types.length)];
+      // ilk sıra her zaman normal olsun ki oyun okunabilir kalsın
+      if (r === 0) type = 'normal';
+      enemies.push({
+        x: 60 + c * 70,
+        baseX: 60 + c * 70,
+        y: 40 + r * 50,
+        baseY: 40 + r * 50,
+        w: 30,
+        h: 20,
+        alive: true,
+        dir: 1,
+        type: type,
+        canShoot: Math.random() < (0.25 + level * 0.03),
+        phase: Math.random() * Math.PI * 2,
+        diving: false,
+        diveVX: 0,
+        diveVY: 0
+      });
+    }
+  }
+}
+spawnWave();
+
+let enemySpeed = 1;
+let enemyShootTimer = 0;
+let diveTimer = 0;
+
+document.addEventListener('keydown', (e) => {
+  keys[e.code] = true;
+  if (e.code === 'Space') {
+    shoot();
+    e.preventDefault();
+  }
+});
+document.addEventListener('keyup', (e) => {
+  keys[e.code] = false;
+});
+
+function shoot() {
+  if (gameOver || paused) return;
+  if (fireCooldown > 0) return;
+  let rapid = Date.now() < rapidFireUntil;
+  fireCooldown = rapid ? 5 : 12;
+  if (rapid) {
+    bullets.push({x: player.x + player.w/2 - 10, y: player.y, w: 4, h: 10});
+    bullets.push({x: player.x + player.w/2 + 6, y: player.y, w: 4, h: 10});
+  } else {
+    bullets.push({x: player.x + player.w/2 - 2, y: player.y, w: 4, h: 10});
+  }
+  sfxShoot();
+}
+
+function spawnExplosion(x, y, color) {
+  for (let i = 0; i < 12; i++) {
+    let angle = Math.random() * Math.PI * 2;
+    let speed = Math.random() * 4 + 1;
+    particles.push({
+      x: x, y: y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      life: 25,
+      color: color
+    });
+  }
+}
+
+function triggerShake(mag) {
+  shakeTime = 12;
+  shakeMag = mag;
+}
+
+function showLevelBanner(text, cb) {
+  paused = true;
+  let el = document.getElementById('levelBanner');
+  el.innerText = text;
+  el.style.transition = 'none';
+  el.style.opacity = '1';
+  sfxLevelUp();
+  setTimeout(() => {
+    el.style.transition = 'opacity 0.6s';
+    el.style.opacity = '0';
+  }, 1000);
+  setTimeout(() => {
+    paused = false;
+    if (cb) cb();
+  }, 1400);
+}
+
+function update() {
+  if (gameOver) return;
+
+  // yıldızlar (paused olsa da akmaya devam etsin, daha canlı dursun)
+  stars.forEach(s => {
+    s.y += s.speed;
+    if (s.y > H) { s.y = 0; s.x = Math.random()*W; }
+  });
+
+  if (paused) return;
+
+  if (fireCooldown > 0) fireCooldown--;
+  if (shakeTime > 0) shakeTime--;
+
+  // oyuncu hareketi
+  if (keys['ArrowLeft'] && player.x > 0) player.x -= player.speed;
+  if (keys['ArrowRight'] && player.x < W - player.w) player.x += player.speed;
+  if (keys['ArrowUp'] && player.y > 0) player.y -= player.speed;
+  if (keys['ArrowDown'] && player.y < H - player.h) player.y += player.speed;
+
+  // mermiler
+  bullets.forEach(b => b.y -= 8);
+  bullets = bullets.filter(b => b.y > -20);
+
+  enemyBullets.forEach(b => b.y += 5 + level * 0.3);
+  enemyBullets = enemyBullets.filter(b => b.y < H + 20);
+
+  // parçacıklar
+  particles.forEach(p => { p.x += p.vx; p.y += p.vy; p.life--; });
+  particles = particles.filter(p => p.life > 0);
+
+  // power-up düşüşü
+  powerups.forEach(p => p.y += 2.5);
+  powerups = powerups.filter(p => p.y < H + 20);
+
+  // düşman hareketi (formasyon + tip bazlı ekstra hareket)
+  let edgeHit = false;
+  enemies.forEach(en => {
+    if (!en.alive) return;
+
+    if (en.type === 'diver' && en.diving) {
+      en.x += en.diveVX;
+      en.y += en.diveVY;
+      if (en.y > H + 30) {
+        // ekrandan çıktı, formasyona geri dön (üstten tekrar gelsin)
+        en.diving = false;
+        en.y = en.baseY;
+        en.x = en.baseX;
+      }
+      return;
+    }
+
+    en.baseX += enemySpeed * en.dir;
+    en.x = en.baseX;
+    if (en.type === 'zigzag') {
+      en.phase += 0.1;
+      en.x = en.baseX + Math.sin(en.phase) * 25;
+    }
+    if (en.baseX <= 0 || en.baseX + en.w >= W) edgeHit = true;
+  });
+  if (edgeHit) {
+    enemies.forEach(en => { en.dir *= -1; en.baseY += 20; if (!en.diving) en.y = en.baseY; });
+  }
+
+  // diver'lar zaman zaman dalışa geçsin -> daha fazla aksiyon
+  diveTimer++;
+  if (diveTimer > Math.max(90 - level * 5, 40)) {
+    diveTimer = 0;
+    let candidates = enemies.filter(en => en.alive && en.type === 'diver' && !en.diving);
+    if (candidates.length > 0) {
+      let d = candidates[Math.floor(Math.random()*candidates.length)];
+      d.diving = true;
+      let dx = (player.x - d.x);
+      let dist = Math.max(Math.abs(dx), 1);
+      d.diveVX = (dx / dist) * 3;
+      d.diveVY = 5 + level * 0.3;
+    }
+  }
+
+  // düşman ateşi
+  enemyShootTimer++;
+  let shootInterval = Math.max(60 - level * 5, 25);
+  if (enemyShootTimer > shootInterval) {
+    enemyShootTimer = 0;
+    let shooters = enemies.filter(en => en.alive && en.canShoot);
+    if (shooters.length > 0) {
+      let s = shooters[Math.floor(Math.random()*shooters.length)];
+      enemyBullets.push({x: s.x + s.w/2 - 2, y: s.y + s.h, w: 4, h: 10});
+    }
+  }
+
+  // çarpışmalar: oyuncu mermisi -> düşman
+  bullets.forEach(b => {
+    enemies.forEach(en => {
+      if (en.alive && b.x < en.x + en.w && b.x + b.w > en.x && b.y < en.y + en.h && b.y + b.h > en.y) {
+        en.alive = false;
+        b.y = -999;
+        score += en.type === 'diver' ? 25 : en.type === 'zigzag' ? 15 : 10;
+        spawnExplosion(en.x + en.w/2, en.y + en.h/2, '#f80');
+        sfxExplosion();
+        if (Math.random() < 0.15) {
+          powerups.push({x: en.x + en.w/2 - 8, y: en.y, w: 16, h: 16});
+        }
+      }
+    });
+  });
+
+  // çarpışmalar: düşman mermisi -> oyuncu
+  enemyBullets.forEach(b => {
+    if (b.x < player.x + player.w && b.x + b.w > player.x && b.y < player.y + player.h && b.y + b.h > player.y) {
+      b.y = H + 999;
+      lives--;
+      sfxHit();
+      spawnExplosion(player.x + player.w/2, player.y + player.h/2, '#0ff');
+      triggerShake(6);
+      if (lives <= 0) {
+        endGame();
+      }
+    }
+  });
+
+  // düşman gemisi oyuncuya çarparsa (dalış dahil) ya da alta inerse
+  enemies.forEach(en => {
+    if (en.alive && en.y + en.h >= player.y && en.x < player.x + player.w && en.x + en.w > player.x) {
+      lives = 0;
+      endGame();
+    } else if (en.alive && !en.diving && en.y + en.h >= player.y) {
+      lives = 0;
+      endGame();
+    }
+  });
+
+  // power-up toplama
+  powerups.forEach(p => {
+    if (p.x < player.x + player.w && p.x + p.w > player.x && p.y < player.y + player.h && p.y + p.h > player.y) {
+      p.y = H + 999;
+      rapidFireUntil = Date.now() + 5000;
+      sfxPowerup();
+    }
+  });
+
+  // seviye bitti mi
+  if (enemies.every(en => !en.alive)) {
+    level++;
+    enemySpeed += 0.35;
+    document.getElementById('level').innerText = level;
+    showLevelBanner('LEVEL ' + level, spawnWave);
+  }
+
+  document.getElementById('score').innerText = score;
+  document.getElementById('lives').innerText = lives;
+  document.getElementById('powerupIndicator').style.display = Date.now() < rapidFireUntil ? 'block' : 'none';
+}
+
+function draw() {
+  ctx.save();
+  if (shakeTime > 0) {
+    let dx = (Math.random()-0.5) * shakeMag;
+    let dy = (Math.random()-0.5) * shakeMag;
+    ctx.translate(dx, dy);
+  }
+
+  ctx.clearRect(-20, -20, W+40, H+40);
+
+  // yıldızlar
+  ctx.fillStyle = '#fff';
+  stars.forEach(s => ctx.fillRect(s.x, s.y, 2, 2));
+
+  // oyuncu gemisi (basit üçgen)
+  ctx.fillStyle = '#0ff';
+  ctx.beginPath();
+  ctx.moveTo(player.x + player.w/2, player.y);
+  ctx.lineTo(player.x, player.y + player.h);
+  ctx.lineTo(player.x + player.w, player.y + player.h);
+  ctx.closePath();
+  ctx.fill();
+
+  // mermiler
+  ctx.fillStyle = '#ff0';
+  bullets.forEach(b => ctx.fillRect(b.x, b.y, b.w, b.h));
+
+  ctx.fillStyle = '#f0f';
+  enemyBullets.forEach(b => ctx.fillRect(b.x, b.y, b.w, b.h));
+
+  // düşmanlar (tipe göre renk)
+  enemies.forEach(en => {
+    if (en.alive) {
+      ctx.fillStyle = en.type === 'diver' ? '#f0f' : en.type === 'zigzag' ? '#ff0' : '#f00';
+      ctx.fillRect(en.x, en.y, en.w, en.h);
+    }
+  });
+
+  // parçacıklar
+  particles.forEach(p => {
+    ctx.fillStyle = p.color;
+    ctx.globalAlpha = Math.max(p.life / 25, 0);
+    ctx.fillRect(p.x, p.y, 3, 3);
+  });
+  ctx.globalAlpha = 1;
+
+  // power-up'lar
+  ctx.fillStyle = '#0f0';
+  powerups.forEach(p => {
+    ctx.fillRect(p.x, p.y, p.w, p.h);
+  });
+
+  ctx.restore();
+}
+
+function gameLoop() {
+  update();
+  draw();
+  if (!gameOver) requestAnimationFrame(gameLoop);
+}
+
+function endGame() {
+  gameOver = true;
+  sfxGameOver();
+  document.getElementById('finalScore').innerText = score;
+  document.getElementById('overlay').style.display = 'block';
+  showHighscores();
+}
+
+function restartGame() {
+  score = 0;
+  lives = 3;
+  level = 1;
+  enemySpeed = 1;
+  gameOver = false;
+  paused = false;
+  bullets = [];
+  enemyBullets = [];
+  particles = [];
+  powerups = [];
+  rapidFireUntil = 0;
+  player.x = W/2 - 20;
+  document.getElementById('level').innerText = level;
+  spawnWave();
+  document.getElementById('overlay').style.display = 'none';
+  gameLoop();
+}
+
+function getHighscores() {
+  return JSON.parse(localStorage.getItem('legacy_highscores') || '[]');
+}
+
+function saveScore() {
+  let name = document.getElementById('playerName').value || 'Anonim';
+  let scores = getHighscores();
+  scores.push({name: name, score: score});
+  scores.sort((a,b) => b.score - a.score);
+  scores = scores.slice(0, 5);
+  localStorage.setItem('legacy_highscores', JSON.stringify(scores));
+  updateHighscoreHUD();
+  showHighscores();
+}
+
+function showHighscores() {
+  let scores = getHighscores();
+  let html = '<b>TOP 5</b><br>';
+  scores.forEach((s, i) => {
+    html += (i+1) + '. ' + s.name + ' - ' + s.score + '<br>';
+  });
+  document.getElementById('highscores').innerHTML = html;
+}
+
+function updateHighscoreHUD() {
+  let scores = getHighscores();
+  let top = scores.length > 0 ? scores[0].score : 0;
+  document.getElementById('highscore').innerText = top;
+}
+
+updateHighscoreHUD();
+gameLoop();
+</script>
+
+</body>
+</html>

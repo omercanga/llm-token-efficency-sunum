@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Tarayıcıda oynanan retro (80'ler arcade) yıldız savaşı gemisi oyunu."
+    />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' fill='%23000814'/%3E%3Cpath d='M12 3 L20 20 L12 15 L4 20 Z' fill='%2339ff88'/%3E%3C/svg%3E"
+    />
+    <!--
+      frame-ancestors ve sandbox meta etiketiyle desteklenmez (tarayıcılar
+      bunları yok sayar); üretimde bu ikisi HTTP başlığı olarak da eklenmeli
+      (bkz. docs/SECURITY.md, docs/RUNBOOK.md).
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'"
+    />
+    <title>Yıldız Savaşı</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: #000;
+        height: 100%;
+        overflow: hidden;
+      }
+      #app {
+        position: relative;
+        width: max-content;
+        margin: 0 auto;
+      }
+      #game-canvas {
+        display: block;
+        image-rendering: pixelated;
+      }
+      #hud {
+        position: absolute;
+        top: 8px;
+        left: 12px;
+        color: #e0f2ff;
+        font-family: 'Courier New', monospace;
+        font-size: 16px;
+        letter-spacing: 1px;
+        text-shadow: 0 0 4px #39ff88;
+        pointer-events: none;
+      }
+      #level-banner {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: 'Courier New', monospace;
+        font-size: 28px;
+        letter-spacing: 4px;
+        color: #ffe066;
+        text-shadow:
+          0 0 10px #ffe066,
+          0 0 20px #ff8c00;
+        pointer-events: none;
+        background: rgba(0, 8, 20, 0.22);
+        opacity: 0;
+        transform: scale(0.94);
+        transition:
+          opacity 0.35s ease,
+          transform 0.35s ease;
+      }
+      #level-banner.visible {
+        opacity: 1;
+        transform: scale(1);
+      }
+      #game-over {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        background: rgba(0, 8, 20, 0.85);
+        color: #ff4d6d;
+        font-family: 'Courier New', monospace;
+        text-align: center;
+      }
+      #game-over[hidden] {
+        display: none;
+      }
+      .game-over__title {
+        font-size: 32px;
+        letter-spacing: 4px;
+        margin: 0;
+      }
+      .game-over__score {
+        color: #e0f2ff;
+        font-size: 18px;
+        margin: 0;
+      }
+      .game-over__form {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        margin-top: 8px;
+      }
+      .game-over__form[hidden] {
+        display: none;
+      }
+      .game-over__form label {
+        color: #e0f2ff;
+        font-size: 14px;
+      }
+      .game-over__form input {
+        font-family: 'Courier New', monospace;
+        background: #000814;
+        color: #e0f2ff;
+        border: 1px solid #39ff88;
+        padding: 4px 6px;
+        width: 10ch;
+      }
+      .game-over__form button {
+        font-family: 'Courier New', monospace;
+        background: #39ff88;
+        color: #000814;
+        border: none;
+        padding: 4px 10px;
+        cursor: pointer;
+      }
+      .game-over__error {
+        color: #ff4d6d;
+        font-size: 13px;
+        margin: 4px 0 0;
+      }
+      .game-over__scores {
+        color: #e0f2ff;
+        font-size: 14px;
+        text-align: left;
+        margin: 8px 0 0;
+        padding-left: 20px;
+      }
+      .game-over__restart {
+        margin-top: 16px;
+        font-family: 'Courier New', monospace;
+        font-size: 15px;
+        background: transparent;
+        color: #39ff88;
+        border: 1px solid #39ff88;
+        padding: 6px 16px;
+        cursor: pointer;
+      }
+      .game-over__restart:hover {
+        background: #39ff88;
+        color: #000814;
+      }
+    </style>
+  </head>
+  <body>
+    <main id="app"></main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

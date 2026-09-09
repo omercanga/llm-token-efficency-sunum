@@ -1,0 +1,39 @@
+[
+  {
+    "spawns": [
+      { "atSeconds": 0, "x": 60, "speedPxPerSec": 60, "scoreValue": 10 },
+      { "atSeconds": 0.6, "x": 160, "speedPxPerSec": 60, "scoreValue": 10 },
+      { "atSeconds": 1.2, "x": 260, "speedPxPerSec": 60, "scoreValue": 10 },
+      { "atSeconds": 1.8, "x": 360, "speedPxPerSec": 60, "scoreValue": 10 },
+      { "atSeconds": 2.4, "x": 220, "speedPxPerSec": 70, "scoreValue": 15, "kind": "zigzag" },
+      { "atSeconds": 3.0, "x": 240, "speedPxPerSec": 90, "scoreValue": 20, "kind": "diver" }
+    ]
+  },
+  {
+    "spawns": [
+      { "atSeconds": 0, "x": 40, "speedPxPerSec": 80, "scoreValue": 15 },
+      { "atSeconds": 0.4, "x": 120, "speedPxPerSec": 80, "scoreValue": 15, "kind": "zigzag" },
+      { "atSeconds": 0.8, "x": 200, "speedPxPerSec": 80, "scoreValue": 15 },
+      { "atSeconds": 1.2, "x": 280, "speedPxPerSec": 80, "scoreValue": 15, "kind": "zigzag" },
+      { "atSeconds": 1.6, "x": 360, "speedPxPerSec": 80, "scoreValue": 15 },
+      { "atSeconds": 2.0, "x": 150, "speedPxPerSec": 95, "scoreValue": 20, "kind": "diver" },
+      { "atSeconds": 2.4, "x": 330, "speedPxPerSec": 95, "scoreValue": 20, "kind": "diver" },
+      { "atSeconds": 2.9, "x": 200, "speedPxPerSec": 50, "scoreValue": 30, "kind": "tank" }
+    ]
+  },
+  {
+    "spawns": [
+      { "atSeconds": 0, "x": 30, "speedPxPerSec": 100, "scoreValue": 20 },
+      { "atSeconds": 0.35, "x": 100, "speedPxPerSec": 100, "scoreValue": 20, "kind": "zigzag" },
+      { "atSeconds": 0.7, "x": 170, "speedPxPerSec": 100, "scoreValue": 20 },
+      { "atSeconds": 1.05, "x": 240, "speedPxPerSec": 100, "scoreValue": 20, "kind": "zigzag" },
+      { "atSeconds": 1.4, "x": 310, "speedPxPerSec": 100, "scoreValue": 20 },
+      { "atSeconds": 1.75, "x": 380, "speedPxPerSec": 100, "scoreValue": 20, "kind": "zigzag" },
+      { "atSeconds": 2.1, "x": 100, "speedPxPerSec": 100, "scoreValue": 25, "kind": "diver" },
+      { "atSeconds": 2.3, "x": 130, "speedPxPerSec": 55, "scoreValue": 35, "kind": "tank" },
+      { "atSeconds": 2.5, "x": 300, "speedPxPerSec": 55, "scoreValue": 35, "kind": "tank" },
+      { "atSeconds": 2.8, "x": 380, "speedPxPerSec": 100, "scoreValue": 25, "kind": "diver" },
+      { "atSeconds": 3.5, "x": 220, "speedPxPerSec": 40, "scoreValue": 100, "kind": "boss" }
+    ]
+  }
+]

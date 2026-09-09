@@ -1,0 +1,19 @@
+Vibe Coding vs. Agentik/Mühendislik Yaklaşımı
+Örnek Proje: "Legacy" Yıldız Savaş Gemisi Oyunu
+
+Her iki prompt da aynı oyunu hedefler ki fark yönteme, ürüne değil, süreç ve kaliteye yansısın:
+
+Tarayıcıda çalışan, retro (80'ler arcade) görünümlü bir uzay savaş gemisi oyunu. Oyuncu gemisi ok tuşlarıyla hareket eder, boşluk ile ateş eder, dalga dalga gelen düşmanları vurur, skor ve can vardır, oyun bitince skor kaydedilir.
+
+PROMPT 1 — Vibe Coding
+Bana retro tarzda bir yıldız savaş gemisi oyunu yap. Tarayıcıda çalışsın,
+tek bir HTML dosyası olsun, açınca direkt oynayayım.
+
+- Ok tuşlarıyla gemi hareket etsin, boşluk tuşuyla ateş etsin
+- Yukarıdan dalga dalga düşman gemileri gelsin, bazıları ateş etsin
+- Skor ve 3 can olsun, can bitince "GAME OVER" yazsın
+- En yüksek skor kaydedilsin, oyuncu ismini girip kaydedebilsin
+- Piksel/neon 80'ler arcade havası olsun, ses efekti de olsun
+- Kod uzun olabilir, sorun değil, sadece çalışsın
+
+Hadi başla.
