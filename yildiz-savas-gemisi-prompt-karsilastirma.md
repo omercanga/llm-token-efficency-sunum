@@ -184,17 +184,19 @@ Her iki oyun çalıştıktan sonra **aynı 3 isteği** iki projeye de yönelt ve
 | Vibe | Skor mantığı, DOM ve localStorage iç içe; ayırmak refactor gerektirir → risk yüksek, süre uzun. |
 | Mühendislik | Yeni bir `RestStorageAdapter` yazılır, arayüz aynı; oyun mantığı değişmez. |
 
-### Ölçüm tablosu (canlı sunumda doldurulacak)
+### Ölçüm tablosu (repolardaki gerçek koda bakılarak dolduruldu)
+
+> Bu depodaki [`sunum-ornek-vibe/`](../sunum-ornek-vibe/) ve [`sunum-ornek-agent/`](../sunum-ornek-agent/) projeleri incelenerek çıkarılmıştır. "Süre" satırları kabaca/görece tahmindir, diğerleri koddan doğrudan sayılmıştır.
 
 | Ölçüt | Vibe | Mühendislik |
 |---|---|---|
-| İlk çalışır sürüme kadar süre | | |
-| Toplam dosya / satır sayısı | | |
-| Test A: XSS var mı? | | |
-| Test B: değişen satır sayısı / bozulan şey | | |
-| Test C: değişen dosya sayısı / harcanan süre | | |
-| Kodu ilk kez gören birinin anlama süresi | | |
-| Otomatik test sayısı | | |
+| İlk çalışır sürüme kadar süre | Tek prompt → dakikalar içinde çalışan tek dosya | 7 fazlı, her fazda onay bekleyen bir süreç → saatler mertebesinde |
+| Toplam dosya / satır sayısı | 1 dosya, 560 satır (`legacy-vibe.html`) | 71 dosya (kod+doküman), `src/` altında ~5.000 satır |
+| Test A: XSS var mı? | **Evet.** Oyuncu ismi hiç doğrulanmadan (`legacy-vibe.html:530`) alınıp `innerHTML`'e string birleştirmeyle basılıyor (`legacy-vibe.html:546`) | **Hayır.** `nameValidation.ts` yalnızca harf/rakam/boşluğa izin veren regex ile reddediyor, `hud.ts` `textContent` kullanıyor (`innerHTML` hiç geçmiyor) |
+| Test B: değişen satır sayısı / bozulan şey | `enemySpeed` global değişkeni dosyada 4 ayrı yerde geçiyor (satır 218, 335, 427, 510); "%20 hızlan" için hepsini bulup elle hesaplamak, hiçbir test onaylamıyor | Hız verisi `waves.json` içindeki `speedPxPerSec` alanlarında veya tek bir `DIFFICULTY_STEP_PER_CYCLE` sabitinde (`constants.ts`); değişiklik `spawn.test.ts` ile anında doğrulanıyor |
+| Test C: değişen dosya sayısı / harcanan süre | `localStorage.getItem/setItem` çağrıları `getHighscores`/`saveScore` fonksiyonlarına doğrudan gömülü; REST'e geçmek oyun kodunu refactor etmeyi gerektirir | `HighScoreStorage` arayüzü zaten tanımlı (`highScoreStorage.ts`); tek iş yeni bir `RestStorageAdapter` dosyası eklemek, oyun/UI kodu değişmez |
+| Kodu ilk kez gören birinin anlama süresi | Tek 560 satırlık dosyada state, render, input, DOM iç içe; yol gösterecek doküman yok | Modül sınırları belli (`engine/entities/systems/state/ui`) + 8 doküman (3 ADR, SECURITY, TEST-PLAN, PERFORMANCE, ROADMAP, RUNBOOK) |
+| Otomatik test sayısı | 0 | 23 test dosyası, 212 test (`it`/`test` bloğu) |
 
 ---
 
